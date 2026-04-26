@@ -1,16 +1,5 @@
-/**
- * YourVitalPrime — Agent 3: Article Writer
- * Model: Claude Sonnet 4.6
- * Generates long-form health articles for 50+ audience
- * Called by: /api/cron/generate-article
- */
-
-import Anthropic from "@anthropic-ai/sdk";
+import { getAnthropic, ANTHROPIC_MODEL, extractText, extractJson } from "@/lib/anthropic";
 import { getPersonaForPillar, type Persona } from "@/content/personas";
-
-const anthropic = new Anthropic({
-  apiKey: process.env.ANTHROPIC_API_KEY!,
-});
 
 export interface ArticleInput {
   keyword: string;
@@ -28,6 +17,11 @@ export interface CompetitorAnalysis {
   serp_features: string[];
 }
 
+export interface FAQItem {
+  question: string;
+  answer: string;
+}
+
 export interface GeneratedArticle {
   title: string;
   slug: string;
@@ -42,10 +36,15 @@ export interface GeneratedArticle {
   internal_link_suggestions: string[];
 }
 
-export interface FAQItem {
-  question: string;
-  answer: string;
-}
+type RawArticleResponse = {
+  title: string;
+  slug: string;
+  meta_description: string;
+  content_mdx: string;
+  featured_image_prompt: string;
+  inline_image_prompts: [string, string];
+  faq: FAQItem[];
+};
 
 export async function generateArticle(
   input: ArticleInput
@@ -59,25 +58,52 @@ export async function generateArticle(
   const systemPrompt = buildSystemPrompt(persona, input.lang);
   const userPrompt = buildUserPrompt(input, persona, targetWordCount);
 
-  const response = await anthropic.messages.create({
-    model: "claude-sonnet-4-20250514",
+  const message = await getAnthropic().messages.create({
+    model: ANTHROPIC_MODEL,
     max_tokens: 8000,
     system: systemPrompt,
     messages: [{ role: "user", content: userPrompt }],
   });
 
-  const rawContent = response.content[0].type === "text"
-    ? response.content[0].text
-    : "";
+  const raw = extractText(message);
+  const parsed = extractJson<RawArticleResponse>(raw);
+  if (!parsed) {
+    throw new Error("Article writer returned no parsable JSON.");
+  }
 
-  return parseArticleResponse(rawContent, input);
+  const wordCount = countWords(parsed.content_mdx);
+  const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
+  return {
+    title: parsed.title,
+    slug: parsed.slug,
+    meta_description: parsed.meta_description,
+    content_html: parsed.content_mdx, // MDX→HTML transformation happens at render time
+    content_mdx: parsed.content_mdx,
+    featured_image_prompt: parsed.featured_image_prompt,
+    inline_image_prompts: parsed.inline_image_prompts,
+    schema_faq: parsed.faq,
+    word_count: wordCount,
+    reading_time_min: readingTime,
+    internal_link_suggestions: [],
+  };
+}
+
+function countWords(mdx: string): number {
+  return mdx
+    .replace(/[#*`\[\]()]/g, " ")
+    .split(/\s+/)
+    .filter(Boolean).length;
 }
 
 function buildSystemPrompt(persona: Persona, lang: "en" | "es"): string {
-  if (lang === "en") {
-    return `You are the lead writer for YourVitalPrime.com — a health and longevity resource for adults 50+.
+  if (lang === "es") {
+    return `Eres el escritor principal de YourVitalPrime.com — un recurso de salud y longevidad para adultos de 50+. Sigue exactamente las mismas reglas que la versión en inglés (Stop-Slop, voz directa, sin jerga, sin promesas). Devuelve un JSON con los mismos campos.`;
+  }
 
-Your reader is ${persona.name}, ${persona.age_range}. 
+  return `You are the lead writer for YourVitalPrime.com — a health and longevity resource for adults 50+.
+
+Your reader is ${persona.name}, ${persona.age_range}.
 
 Their pain points:
 ${persona.pain_points.map((p) => `- ${p}`).join("\n")}
@@ -111,13 +137,13 @@ STRUCTURE RULES:
 - Build toward practical action
 - End with realistic expectations, not a pep talk
 
-OUTPUT FORMAT: Return a JSON object exactly matching this schema:
+OUTPUT FORMAT: Return a JSON object exactly matching this schema (and NOTHING else outside the JSON):
 {
   "title": "...",
   "slug": "...",
   "meta_description": "...",
-  "content_mdx": "full article in MDX format with ## headings",
-  "featured_image_prompt": "detailed DALL-E 3 prompt for featured image",
+  "content_mdx": "full article in MDX with ## and ### headings",
+  "featured_image_prompt": "detailed image prompt for featured image",
   "inline_image_prompts": ["prompt for image 1", "prompt for image 2"],
   "faq": [
     {"question": "...", "answer": "..."},
@@ -125,10 +151,6 @@ OUTPUT FORMAT: Return a JSON object exactly matching this schema:
     {"question": "...", "answer": "..."}
   ]
 }`;
-  }
-
-  // Spanish system prompt (for future expansion)
-  return `Eres el escritor principal de YourVitalPrime.com — un recurso de salud y longevidad para adultos de 50+...`;
 }
 
 function buildUserPrompt(
@@ -152,7 +174,7 @@ ${input.competitor_analysis.serp_features.join(", ")}
 
 ARTICLE REQUIREMENTS:
 
-Title: 
+Title:
 - Must include the exact keyword naturally
 - Emotionally resonant — speaks to the reader's fear or goal
 - 55-65 characters
@@ -173,49 +195,11 @@ External links to include:
 - Link to Mayo Clinic or NHS for one supporting fact
 
 Image prompts:
-- Featured image: Warm, editorial photography aesthetic. Real-looking adults 55-65 in a setting relevant to the article topic. Authentic, not stock-photo. Positive but realistic. No text. 16:9.
-- Inline image 1: [Concept/data visualization relevant to the article's key mechanism]
-- Inline image 2: [Practical/lifestyle scene showing someone doing the recommended action]
+- Featured image: Warm, editorial photography. Real-looking adults 55-65 in a setting relevant to the topic. Authentic, not stock-photo. Positive but realistic. No text in image. 16:9.
+- Inline image 1: Concept/data visualization relevant to the article's key mechanism.
+- Inline image 2: Practical/lifestyle scene showing someone doing the recommended action.
 
 Meta description: 150-160 chars, includes keyword, answers "what will I learn?", compels click.
 
 Slug: URL-friendly, 3-6 words, includes primary keyword.`;
-}
-
-function parseArticleResponse(
-  raw: string,
-  input: ArticleInput
-): GeneratedArticle {
-  // Extract JSON from response
-  const jsonMatch = raw.match(/\{[\s\S]*\}/);
-  if (!jsonMatch) {
-    throw new Error("Article writer returned no valid JSON");
-  }
-
-  const parsed = JSON.parse(jsonMatch[0]);
-
-  // Calculate word count from MDX content
-  const wordCount = parsed.content_mdx
-    .replace(/[#*`\[\]()]/g, "")
-    .split(/\s+/)
-    .filter(Boolean).length;
-
-  const readingTime = Math.ceil(wordCount / 200); // 200 wpm average
-
-  // Convert MDX to HTML (simplified — use remark in actual implementation)
-  const contentHtml = parsed.content_mdx;
-
-  return {
-    title: parsed.title,
-    slug: parsed.slug,
-    meta_description: parsed.meta_description,
-    content_html: contentHtml,
-    content_mdx: parsed.content_mdx,
-    featured_image_prompt: parsed.featured_image_prompt,
-    inline_image_prompts: parsed.inline_image_prompts,
-    schema_faq: parsed.faq,
-    word_count: wordCount,
-    reading_time_min: readingTime,
-    internal_link_suggestions: [], // Agent 5 (SEO Auditor) populates this
-  };
 }

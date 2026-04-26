@@ -1,33 +1,54 @@
-/**
- * YourVitalPrime — Agent 7: GSC Indexer
- * No LLM — pure Google API integration
- * Auto-submits new article URLs to Google Search Console Indexing API
- * Also pings Google sitemap on every new publish
- */
-
 import { google } from "googleapis";
-import { db } from "@/lib/firebase";
-import { doc, setDoc, serverTimestamp } from "firebase/firestore";
+import { FieldValue } from "firebase-admin/firestore";
+import { getDb, isFirebaseConfigured } from "@/lib/firebase";
 
 const SITE_URL = process.env.GSC_SITE_URL || "https://yourvitalprime.com";
 const SITEMAP_URL = `${SITE_URL}/sitemap.xml`;
 
-interface IndexingResult {
+export interface IndexingResult {
   url: string;
   success: boolean;
   type: "URL_UPDATED" | "URL_DELETED";
+  skipped?: "not_configured";
   error?: string;
   notified_at?: string;
 }
 
-/**
- * Submit a single article URL to GSC Indexing API
- */
-export async function submitUrlToIndex(slug: string, lang: "en" | "es" = "en"): Promise<IndexingResult> {
-  const articleUrl = `${SITE_URL}/${lang}/blog/${slug}`;
-  
+export function isGscConfigured(): boolean {
+  const raw = process.env.GOOGLE_SERVICE_ACCOUNT_KEY;
+  if (!raw) return false;
   try {
-    const auth = await getGoogleAuth();
+    const parsed = JSON.parse(raw);
+    return !!parsed.client_email && !!parsed.private_key;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Submit one article URL to the GSC Indexing API.
+ * If the service account key is missing (we parked it while GSC fixes the
+ * "user not found" bug), this no-ops with success=true and skipped="not_configured".
+ */
+export async function submitUrlToIndex(
+  slug: string,
+  lang: "en" | "es" = "en"
+): Promise<IndexingResult> {
+  const articleUrl = `${SITE_URL}/${lang}/blog/${slug}`;
+
+  if (!isGscConfigured()) {
+    const result: IndexingResult = {
+      url: articleUrl,
+      success: true,
+      type: "URL_UPDATED",
+      skipped: "not_configured",
+    };
+    await logSubmission(slug, result).catch(() => undefined);
+    return result;
+  }
+
+  try {
+    const auth = getGoogleAuth();
     const indexing = google.indexing({ version: "v3", auth });
 
     const response = await indexing.urlNotifications.publish({
@@ -41,93 +62,59 @@ export async function submitUrlToIndex(slug: string, lang: "en" | "es" = "en"): 
       url: articleUrl,
       success: true,
       type: "URL_UPDATED",
-      notified_at: response.data.urlNotificationMetadata?.latestUpdate?.notifyTime || new Date().toISOString(),
+      notified_at:
+        response.data.urlNotificationMetadata?.latestUpdate?.notifyTime ||
+        new Date().toISOString(),
     };
 
-    // Log to Firestore
     await logSubmission(slug, result);
-
-    // Also ping sitemap
     await pingSitemap();
-
     return result;
-  } catch (error: any) {
+  } catch (error) {
     const result: IndexingResult = {
       url: articleUrl,
       success: false,
       type: "URL_UPDATED",
-      error: error.message || "Unknown GSC error",
+      error: error instanceof Error ? error.message : "Unknown GSC error",
     };
-
-    await logSubmission(slug, result);
+    await logSubmission(slug, result).catch(() => undefined);
     return result;
   }
 }
 
-/**
- * Submit all unindexed articles (for bulk catchup)
- */
-export async function submitPendingUrls(): Promise<IndexingResult[]> {
-  // Fetch articles where gsc_submitted = false from Firestore
-  // Implement with Firestore query in actual code
-  const pendingArticles: Array<{ slug: string; lang: "en" | "es" }> = [];
-  
-  const results: IndexingResult[] = [];
-  
-  for (const article of pendingArticles) {
-    const result = await submitUrlToIndex(article.slug, article.lang);
-    results.push(result);
-    
-    // GSC Indexing API rate limit: 200 requests/day — pace requests
-    await sleep(500);
-  }
-  
-  return results;
-}
-
-/**
- * Ping Google with updated sitemap
- * https://developers.google.com/search/docs/crawling-indexing/sitemaps/build-sitemap#notify-google
- */
 async function pingSitemap(): Promise<void> {
   try {
-    const pingUrl = `https://www.google.com/ping?sitemap=${encodeURIComponent(SITEMAP_URL)}`;
-    await fetch(pingUrl);
+    const url = `https://www.google.com/ping?sitemap=${encodeURIComponent(SITEMAP_URL)}`;
+    await fetch(url);
   } catch (error) {
     console.error("Sitemap ping failed:", error);
   }
 }
 
-/**
- * Get Google Auth using service account
- * Requires GOOGLE_SERVICE_ACCOUNT_KEY env var (JSON string)
- */
-async function getGoogleAuth() {
+function getGoogleAuth() {
   const credentials = JSON.parse(process.env.GOOGLE_SERVICE_ACCOUNT_KEY || "{}");
-  
-  const auth = new google.auth.GoogleAuth({
+  return new google.auth.GoogleAuth({
     credentials,
     scopes: ["https://www.googleapis.com/auth/indexing"],
   });
-  
-  return auth;
 }
 
-/**
- * Log submission result to Firestore for monitoring
- */
-async function logSubmission(slug: string, result: IndexingResult): Promise<void> {
-  const submissionRef = doc(db, "gsc_submissions", `${slug}_${Date.now()}`);
-  await setDoc(submissionRef, {
-    slug,
-    url: result.url,
-    success: result.success,
-    error: result.error || null,
-    submitted_at: serverTimestamp(),
-    notified_at: result.notified_at || null,
-  });
-}
-
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+async function logSubmission(
+  slug: string,
+  result: IndexingResult
+): Promise<void> {
+  if (!isFirebaseConfigured()) return;
+  const db = getDb();
+  await db
+    .collection("gsc_submissions")
+    .doc(`${slug}_${Date.now()}`)
+    .set({
+      slug,
+      url: result.url,
+      success: result.success,
+      skipped: result.skipped ?? null,
+      error: result.error ?? null,
+      submitted_at: FieldValue.serverTimestamp(),
+      notified_at: result.notified_at ?? null,
+    });
 }

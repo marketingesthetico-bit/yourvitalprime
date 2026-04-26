@@ -226,29 +226,49 @@ const seedKeywords: SeedKeyword[] = [
   },
 ];
 
-async function seedKeywords() {
+function slugify(input: string): string {
+  return input
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[̀-ͯ]/g, "")
+    .replace(/[^\w\s-]/g, "")
+    .trim()
+    .replace(/\s+/g, "-")
+    .slice(0, 80);
+}
+
+async function runSeed() {
   console.log(`Seeding ${seedKeywords.length} keywords to Firestore...`);
 
   const batch = db.batch();
+  let written = 0;
+  let skipped = 0;
 
   for (const kw of seedKeywords) {
-    const ref = db.collection("keywords").doc();
+    const id = slugify(kw.keyword);
+    const ref = db.collection("keywords").doc(id);
+    const existing = await ref.get();
+    if (existing.exists) {
+      skipped += 1;
+      continue;
+    }
     batch.set(ref, {
       ...kw,
       created_at: Timestamp.now(),
       assigned_to_article: null,
       pipeline_run_id: null,
+      source: "seed-keywords-script",
     });
+    written += 1;
   }
 
-  await batch.commit();
+  if (written > 0) await batch.commit();
 
-  // Sort summary by opportunity score
   const sorted = [...seedKeywords].sort(
     (a, b) => b.opportunity_score - a.opportunity_score
   );
 
-  console.log("\n✅ Keywords seeded successfully!");
+  console.log(`\nSeeded: ${written} new, ${skipped} skipped (already existed).`);
   console.log("\nTop 10 by opportunity score:");
   sorted.slice(0, 10).forEach((kw, i) => {
     console.log(
@@ -257,4 +277,7 @@ async function seedKeywords() {
   });
 }
 
-seedKeywords().catch(console.error);
+runSeed().catch((error) => {
+  console.error(error);
+  process.exit(1);
+});
