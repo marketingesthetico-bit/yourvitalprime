@@ -2,38 +2,24 @@
   "crons": [
     {
       "path": "/api/cron/generate-article",
-      "schedule": "0 5 */2 * *",
-      "comment": "Generate 1 article every 2 days at 07:00 Madrid (05:00 UTC)"
+      "schedule": "0 5 */2 * *"
     },
     {
       "path": "/api/cron/keyword-research",
-      "schedule": "0 9 * * 1",
-      "comment": "Weekly keyword research — every Monday 09:00 UTC"
+      "schedule": "0 9 * * 1"
     },
     {
       "path": "/api/cron/competitor-analysis",
-      "schedule": "0 10 * * 2",
-      "comment": "Weekly competitor analysis — every Tuesday 10:00 UTC"
+      "schedule": "0 10 * * 2"
     },
     {
       "path": "/api/cron/seo-audit",
-      "schedule": "0 8 * * *",
-      "comment": "Daily SEO audit of published articles — 08:00 UTC"
+      "schedule": "0 8 * * *"
     }
   ],
   "functions": {
     "src/app/api/cron/generate-article/route.ts": {
-      "maxDuration": 300,
-      "comment": "5 min max — article generation + image generation takes time"
-    },
-    "src/app/api/cron/keyword-research/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/competitor-analysis/route.ts": {
-      "maxDuration": 120
-    },
-    "src/app/api/cron/seo-audit/route.ts": {
-      "maxDuration": 120
+      "maxDuration": 300
     }
   }
 }
