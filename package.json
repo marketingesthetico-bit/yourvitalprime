@@ -7,7 +7,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
-    "seed:keywords": "tsx scripts/seed-keywords.ts"
+    "seed:keywords": "tsx --env-file=.env.local scripts/seed-keywords.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.91.1",

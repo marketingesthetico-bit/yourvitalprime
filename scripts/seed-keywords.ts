@@ -1,19 +1,59 @@
 /**
  * YourVitalPrime — Seed Keywords Script
  * Run: npm run seed:keywords
- * Populates Firestore `keywords` collection with the initial 30-article content calendar
+ * Populates Firestore `keywords` collection with the initial 30-article content calendar.
+ *
+ * Credentials precedence (first match wins):
+ *   1. FIREBASE_SERVICE_ACCOUNT_PATH  — path to a JSON file (recommended for local)
+ *   2. FIREBASE_SERVICE_ACCOUNT_JSON  — full JSON as a string
+ *   3. FIREBASE_PROJECT_ID + FIREBASE_CLIENT_EMAIL + FIREBASE_PRIVATE_KEY
  */
 
-import { initializeApp, cert } from "firebase-admin/app";
+import * as fs from "node:fs";
+import * as path from "node:path";
+import { initializeApp, cert, type ServiceAccount } from "firebase-admin/app";
 import { getFirestore, Timestamp } from "firebase-admin/firestore";
 
-initializeApp({
-  credential: cert({
-    projectId: process.env.FIREBASE_PROJECT_ID,
-    clientEmail: process.env.FIREBASE_CLIENT_EMAIL,
-    privateKey: process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n"),
-  }),
-});
+function loadServiceAccount(): ServiceAccount {
+  const fromPath = process.env.FIREBASE_SERVICE_ACCOUNT_PATH;
+  if (fromPath) {
+    const abs = path.isAbsolute(fromPath)
+      ? fromPath
+      : path.resolve(process.cwd(), fromPath);
+    if (!fs.existsSync(abs)) {
+      throw new Error(`FIREBASE_SERVICE_ACCOUNT_PATH points to a non-existent file: ${abs}`);
+    }
+    const raw = fs.readFileSync(abs, "utf8");
+    const json = JSON.parse(raw);
+    return {
+      projectId: json.project_id,
+      clientEmail: json.client_email,
+      privateKey: json.private_key,
+    };
+  }
+
+  const fromJson = process.env.FIREBASE_SERVICE_ACCOUNT_JSON;
+  if (fromJson) {
+    const json = JSON.parse(fromJson);
+    return {
+      projectId: json.project_id,
+      clientEmail: json.client_email,
+      privateKey: json.private_key,
+    };
+  }
+
+  const projectId = process.env.FIREBASE_PROJECT_ID;
+  const clientEmail = process.env.FIREBASE_CLIENT_EMAIL;
+  const privateKey = process.env.FIREBASE_PRIVATE_KEY?.replace(/\\n/g, "\n");
+  if (!projectId || !clientEmail || !privateKey) {
+    throw new Error(
+      "Firebase credentials missing. Set FIREBASE_SERVICE_ACCOUNT_PATH (recommended) or all three of FIREBASE_PROJECT_ID, FIREBASE_CLIENT_EMAIL, FIREBASE_PRIVATE_KEY."
+    );
+  }
+  return { projectId, clientEmail, privateKey };
+}
+
+initializeApp({ credential: cert(loadServiceAccount()) });
 
 const db = getFirestore();
 

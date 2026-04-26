@@ -32,6 +32,13 @@ yarn-error.log*
 # bundles / archives
 *.zip
 
+# service account JSON files (Firebase, GCP) — never commit
+*-firebase-adminsdk-*.json
+*-service-account*.json
+firebase-admin*.json
+gcp-*.json
+secrets/
+
 # vercel
 .vercel
 

@@ -1,0 +1,14 @@
+rules_version = '2';
+
+// YourVitalPrime — Firestore security rules
+//
+// All writes happen server-side through firebase-admin (which bypasses these
+// rules entirely). Client-side reads are blocked because the website renders
+// content server-side via Next.js — no browser ever touches Firestore.
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

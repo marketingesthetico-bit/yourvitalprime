@@ -1,0 +1,15 @@
+rules_version = '2';
+
+// YourVitalPrime — Storage security rules
+//
+// Article images are written by the image-generator agent server-side (admin SDK,
+// bypasses these rules) and made public via file.makePublic(). Public read access
+// for the /articles/* prefix is therefore controlled by object ACLs, not rules,
+// and we deny all client-side access here.
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}
