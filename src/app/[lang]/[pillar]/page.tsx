@@ -4,6 +4,7 @@ import { isLocale, type Locale } from "@/lib/i18n/config";
 import { getStrings } from "@/lib/i18n/strings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ArticleCard } from "@/components/article/ArticleCard";
+import { SiteImage } from "@/components/ui/SiteImage";
 import { listPublishedArticles } from "@/lib/articles";
 import { pillars, type PillarSlug } from "@/content/pillars";
 
@@ -59,6 +60,25 @@ export default async function PillarPage({ params }: PageProps) {
         title={pillarStrings.name}
         subtitle={pillarStrings.question}
       />
+      <div className="container-wide pt-10">
+        <div
+          className="overflow-hidden"
+          style={{
+            borderRadius: "var(--radius-card)",
+            boxShadow: "var(--shadow-card)",
+            maxWidth: "1024px",
+            marginInline: "auto",
+          }}
+        >
+          <SiteImage
+            name="pillars-banner.jpg"
+            alt=""
+            aspect="21/9"
+            position="center 40%"
+            placeholderLabel={pillarStrings.name}
+          />
+        </div>
+      </div>
       <section className="container-wide py-14">
         {articles.length === 0 ? (
           <div

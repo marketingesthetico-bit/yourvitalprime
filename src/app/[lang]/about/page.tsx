@@ -4,6 +4,7 @@ import Link from "next/link";
 import { isLocale } from "@/lib/i18n/config";
 import { getStrings } from "@/lib/i18n/strings";
 import { PageHeader } from "@/components/layout/PageHeader";
+import { SiteImage } from "@/components/ui/SiteImage";
 
 type PageProps = { params: { lang: string } };
 
@@ -26,6 +27,27 @@ export default function AboutPage({ params }: PageProps) {
   return (
     <>
       <PageHeader title={s.pages.about.title} subtitle={s.pages.about.subtitle} />
+      <div className="container-narrow pt-10">
+        <div
+          className="overflow-hidden"
+          style={{
+            borderRadius: "var(--radius-card)",
+            boxShadow: "var(--shadow-card)",
+            border: "1px solid var(--color-border)",
+          }}
+        >
+          <SiteImage
+            name="about-detail.jpg"
+            alt={
+              isEs
+                ? "Detalle de un escritorio editorial en Madrid: cuaderno y café"
+                : "Detail of an editorial Madrid workspace: notebook and coffee"
+            }
+            aspect="21/9"
+            placeholderLabel="Madrid"
+          />
+        </div>
+      </div>
       <article className="container-prose py-14 prose-vital">
         {isEs ? <SpanishAbout /> : <EnglishAbout />}
 

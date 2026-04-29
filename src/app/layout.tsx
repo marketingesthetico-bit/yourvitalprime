@@ -36,7 +36,7 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "YourVitalPrime",
-    images: ["/og-default.jpg"],
+    images: ["/images/og-default.jpg"],
   },
   twitter: {
     card: "summary_large_image",
