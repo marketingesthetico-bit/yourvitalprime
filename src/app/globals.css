@@ -6,31 +6,38 @@
    ────────────────────────────────────────────────────────────── */
 
 @theme {
-  /* Colors */
-  --color-primary: #1B3A4B;
-  --color-primary-50: #EAF1F4;
-  --color-primary-100: #C7D7DE;
-  --color-primary-700: #20475C;
-  --color-primary-900: #0F2230;
+  /* Colors — warmer, more editorial. Less SaaS, more publication. */
+  --color-primary: #1F3A4A;        /* Slightly less navy, more ink */
+  --color-primary-50: #ECF1F4;
+  --color-primary-100: #C7D5DD;
+  --color-primary-700: #28485B;
+  --color-primary-900: #122230;
 
-  --color-secondary: #C8773A;
-  --color-secondary-50: #FBEFE3;
-  --color-secondary-700: #A05E29;
+  /* Terracotta is now the lead accent — not a side-character */
+  --color-secondary: #BD6B33;       /* Deeper, more cooked */
+  --color-secondary-50: #F8EAD9;
+  --color-secondary-100: #EFD4B5;
+  --color-secondary-700: #8E4F22;
+  --color-secondary-900: #5C3214;
 
-  --color-accent: #4A9B7F;
-  --color-accent-50: #E6F2EC;
-  --color-accent-700: #357561;
+  /* Sage softer, used sparingly for status/success */
+  --color-accent: #6B8F7A;
+  --color-accent-50: #E8EFEB;
+  --color-accent-700: #496556;
 
-  --color-surface: #FAF8F5;
-  --color-surface-2: #F0EBE3;
-  --color-surface-3: #E5DED2;
+  /* Surfaces — paper-like cream with warmth, not clinical white */
+  --color-surface: #FAF6EE;        /* Was FAF8F5, now warmer cream */
+  --color-surface-2: #F1E9D9;      /* Was F0EBE3, now slightly tan */
+  --color-surface-3: #E5D9C2;
+  --color-surface-ink: #1F1B17;    /* Warm dark ink for inverted sections */
 
-  --color-text: #1A1A2E;
-  --color-text-muted: #6B7280;
-  --color-text-soft: #4A4A5C;
+  /* Body ink — slightly brown, not blue-black. Easier on the eye. */
+  --color-text: #2A241D;            /* Warm dark brown-grey */
+  --color-text-muted: #7A6F5F;
+  --color-text-soft: #4D4438;
 
-  --color-border: #DDD6CA;
-  --color-border-strong: #BBB1A0;
+  --color-border: #DDCFB6;
+  --color-border-strong: #BFAE8C;
 
   /* Status / utility */
   --color-success: #4A9B7F;
@@ -56,9 +63,9 @@
   --radius-button: 10px;
   --radius-pill: 999px;
 
-  /* Shadows */
-  --shadow-card: 0 1px 2px rgba(26, 26, 46, 0.04), 0 8px 24px rgba(26, 26, 46, 0.06);
-  --shadow-card-hover: 0 2px 4px rgba(26, 26, 46, 0.06), 0 16px 40px rgba(26, 26, 46, 0.10);
+  /* Shadows — warmer, less floaty */
+  --shadow-card: 0 1px 1px rgba(60, 40, 20, 0.04), 0 6px 18px rgba(60, 40, 20, 0.05);
+  --shadow-card-hover: 0 2px 3px rgba(60, 40, 20, 0.06), 0 12px 32px rgba(60, 40, 20, 0.08);
 
   /* Container */
   --container-prose: 720px;
@@ -158,13 +165,14 @@ button, a.btn, [role="button"] {
     padding-inline: 1.25rem;
   }
 
+  /* Buttons — terracotta is the action color now. Quieter borders. */
   .btn-primary {
     display: inline-flex;
     align-items: center;
     justify-content: center;
     gap: 0.5rem;
     padding: 0.875rem 1.5rem;
-    background-color: var(--color-primary);
+    background-color: var(--color-secondary);
     color: var(--color-surface);
     font-family: var(--font-ui);
     font-weight: 500;
@@ -174,7 +182,7 @@ button, a.btn, [role="button"] {
     transition: background-color 0.15s ease, transform 0.15s ease;
   }
   .btn-primary:hover {
-    background-color: var(--color-primary-700);
+    background-color: var(--color-secondary-700);
     color: var(--color-surface);
   }
   .btn-primary:active { transform: translateY(1px); }
@@ -190,14 +198,29 @@ button, a.btn, [role="button"] {
     font-family: var(--font-ui);
     font-weight: 500;
     font-size: 1.0625rem;
-    border: 1.5px solid var(--color-primary);
+    border: 1.5px solid var(--color-border-strong);
     border-radius: var(--radius-button);
     text-decoration: none;
-    transition: background-color 0.15s ease, color 0.15s ease;
+    transition: border-color 0.15s ease, color 0.15s ease, background-color 0.15s ease;
   }
   .btn-secondary:hover {
-    background-color: var(--color-primary);
-    color: var(--color-surface);
+    border-color: var(--color-primary);
+    color: var(--color-primary);
+    background-color: color-mix(in srgb, var(--color-surface-2) 60%, transparent);
+  }
+
+  /* Editorial label — small caps for sections, datelines, pillar titles */
+  .eyebrow {
+    display: inline-block;
+    font-family: var(--font-ui);
+    font-size: 0.78rem;
+    font-weight: 500;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: var(--color-text-muted);
+  }
+  .eyebrow-accent {
+    color: var(--color-secondary);
   }
 
   .badge {
@@ -207,7 +230,7 @@ button, a.btn, [role="button"] {
     font-family: var(--font-ui);
     font-size: 0.8125rem;
     font-weight: 500;
-    letter-spacing: 0.02em;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
     border-radius: var(--radius-pill);
     background-color: var(--color-surface-2);
@@ -223,16 +246,41 @@ button, a.btn, [role="button"] {
     color: var(--color-secondary-700);
   }
 
+  /* Cards — softer, more paper-like, less floating-pixel */
   .card {
-    background-color: white;
+    background-color: #FFFEFC;
     border-radius: var(--radius-card);
     box-shadow: var(--shadow-card);
     border: 1px solid var(--color-border);
-    transition: box-shadow 0.2s ease, transform 0.2s ease;
+    transition: box-shadow 0.25s ease, transform 0.25s ease, border-color 0.25s ease;
   }
   .card:hover {
     box-shadow: var(--shadow-card-hover);
-    transform: translateY(-2px);
+    border-color: var(--color-border-strong);
+    transform: translateY(-1px);
+  }
+
+  /* Editorial rule — thin terracotta line for section dividers */
+  .rule-editorial {
+    display: block;
+    width: 64px;
+    height: 2px;
+    background-color: var(--color-secondary);
+    border: 0;
+    margin: 0;
+  }
+
+  /* Asterism — three dots used between editorial sections */
+  .asterism {
+    display: block;
+    text-align: center;
+    color: var(--color-secondary);
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    letter-spacing: 1.5rem;
+    padding-left: 1.5rem; /* compensate letter-spacing of last char */
+    margin: 3rem auto;
+    user-select: none;
   }
 
   /* Long-form article prose (used inside container-prose) */

@@ -1,13 +1,18 @@
 import Link from "next/link";
 import type { Metadata } from "next";
+import { notFound } from "next/navigation";
 import { isLocale, type Locale } from "@/lib/i18n/config";
 import { getStrings } from "@/lib/i18n/strings";
 import { pillars } from "@/content/pillars";
 import { PillarCard } from "@/components/home/PillarCard";
 import { NewsletterForm } from "@/components/home/NewsletterForm";
-import { notFound } from "next/navigation";
+import { ArticleCard } from "@/components/article/ArticleCard";
+import { listPublishedArticles } from "@/lib/articles";
 
 type PageProps = { params: { lang: string } };
+
+export const dynamic = "force-dynamic";
+export const revalidate = 60;
 
 export function generateMetadata({ params }: PageProps): Metadata {
   if (!isLocale(params.lang)) return {};
@@ -17,131 +22,245 @@ export function generateMetadata({ params }: PageProps): Metadata {
     description: s.home.heroSubtitle,
     alternates: {
       canonical: `/${params.lang}`,
-      languages: {
-        en: "/en",
-        es: "/es",
-      },
+      languages: { en: "/en", es: "/es" },
     },
   };
 }
 
-export default function HomePage({ params }: PageProps) {
+export default async function HomePage({ params }: PageProps) {
   if (!isLocale(params.lang)) notFound();
   const lang: Locale = params.lang;
   const s = getStrings(lang);
 
+  const articles = await listPublishedArticles({ lang, limit: 7 }).catch(
+    () => []
+  );
+  const [feature, ...rest] = articles;
+  const secondary = rest.slice(0, 6);
+
   return (
     <>
-      {/* Hero */}
+      {/* ── Hero ───────────────────────────────────────────────── */}
       <section
-        className="relative overflow-hidden"
-        style={{
-          background:
-            "linear-gradient(180deg, var(--color-surface-2) 0%, var(--color-surface) 100%)",
-        }}
+        className="relative"
+        style={{ backgroundColor: "var(--color-surface)" }}
       >
-        <div className="container-wide pt-16 pb-20 lg:pt-24 lg:pb-28">
-          <div className="max-w-3xl">
-            <span
-              className="badge mb-6"
-              style={{
-                backgroundColor: "var(--color-secondary-50)",
-                color: "var(--color-secondary-700)",
-              }}
-            >
-              {s.home.heroEyebrow}
-            </span>
-            <h1
-              className="mb-6"
-              style={{
-                fontSize: "var(--text-hero)",
-                lineHeight: 1.08,
-                letterSpacing: "-0.02em",
-                color: "var(--color-primary)",
-              }}
-            >
-              {s.home.heroTitle}
-            </h1>
-            <p
-              className="mb-8 max-w-2xl"
-              style={{
-                fontSize: "var(--text-body-lg)",
-                lineHeight: 1.6,
-                color: "var(--color-text-soft)",
-              }}
-            >
-              {s.home.heroSubtitle}
-            </p>
-            <div className="flex flex-wrap gap-3">
-              <Link href={`/${lang}/blog`} className="btn-primary">
-                {s.home.heroCtaPrimary}
-              </Link>
-              <Link href={`/${lang}/blog`} className="btn-secondary">
-                {s.home.heroCtaSecondary}
-              </Link>
-            </div>
-
-            {/* Trust signals */}
-            <div
-              className="mt-10 flex flex-wrap gap-x-6 gap-y-3"
-              style={{
-                fontFamily: "var(--font-ui)",
-                color: "var(--color-text-muted)",
-              }}
-            >
-              <TrustSignal label={s.home.trustEvidence} />
-              <TrustSignal label={s.home.trustReal} />
-              <TrustSignal label={s.home.trustArticles} />
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Featured / latest empty state */}
-      <section className="container-wide py-20">
-        <SectionHeader title={s.home.latestTitle} subtitle={s.home.latestSubtitle} />
-        <div
-          className="card p-12 lg:p-16 text-center max-w-3xl mx-auto"
-          style={{
-            backgroundColor: "var(--color-surface-2)",
-            borderStyle: "dashed",
-            borderColor: "var(--color-border-strong)",
-          }}
-        >
-          <div
-            className="inline-flex items-center justify-center w-14 h-14 rounded-2xl mb-5"
+        <div className="container-narrow pt-16 pb-12 lg:pt-24 lg:pb-16">
+          <p className="eyebrow eyebrow-accent mb-6">
+            {s.home.heroDateline}
+          </p>
+          <h1
+            className="max-w-[18ch]"
             style={{
-              backgroundColor: "var(--color-accent-50)",
-              color: "var(--color-accent-700)",
+              fontSize: "clamp(2.25rem, 5.4vw, 4rem)",
+              lineHeight: 1.04,
+              letterSpacing: "-0.025em",
+              color: "var(--color-primary)",
+              fontWeight: 600,
+              marginBottom: "1.5rem",
             }}
-            aria-hidden="true"
           >
-            <svg width="28" height="28" viewBox="0 0 24 24" fill="none">
-              <path
-                d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-              />
-            </svg>
+            {s.home.heroTitle}
+          </h1>
+          <p
+            className="max-w-2xl"
+            style={{
+              fontSize: "clamp(1.125rem, 1.8vw, 1.375rem)",
+              lineHeight: 1.55,
+              color: "var(--color-text-soft)",
+              fontFamily: "var(--font-body)",
+              marginBottom: "2rem",
+            }}
+          >
+            {s.home.heroSubtitle}
+          </p>
+          <div className="flex flex-wrap gap-3 mb-10">
+            <Link href={`/${lang}/blog`} className="btn-primary">
+              {s.home.heroCtaPrimary}
+            </Link>
+            <Link href={`/${lang}/blog`} className="btn-secondary">
+              {s.home.heroCtaSecondary}
+            </Link>
           </div>
-          <p className="text-[1.125rem]" style={{ color: "var(--color-text-soft)" }}>
-            {s.home.emptyArticles}
+          <p
+            className="max-w-xl text-[0.95rem] leading-relaxed"
+            style={{
+              color: "var(--color-text-muted)",
+              fontFamily: "var(--font-ui)",
+              borderTop: "1px solid var(--color-border)",
+              paddingTop: "1.25rem",
+            }}
+          >
+            {s.home.trustLine}
           </p>
         </div>
       </section>
 
-      {/* Pillars */}
+      {/* ── Recently / Latest ───────────────────────────────────── */}
       <section
-        className="py-20"
-        style={{ backgroundColor: "var(--color-surface-2)" }}
+        className="py-16 lg:py-20 border-y"
+        style={{
+          backgroundColor: "var(--color-surface-2)",
+          borderColor: "var(--color-border)",
+        }}
       >
         <div className="container-wide">
-          <SectionHeader
+          <SectionHead
+            eyebrow={s.home.latestEyebrow}
+            title={s.home.latestTitle}
+            subtitle={s.home.latestSubtitle}
+          />
+
+          {articles.length === 0 ? (
+            <p
+              className="max-w-xl text-[1.0625rem] italic"
+              style={{
+                color: "var(--color-text-soft)",
+                fontFamily: "var(--font-body)",
+                marginTop: "1.5rem",
+              }}
+            >
+              {s.home.emptyArticles}
+            </p>
+          ) : (
+            <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr] mt-10">
+              {/* Featured */}
+              {feature && (
+                <ArticleCard article={feature} lang={lang} variant="featured" />
+              )}
+              {/* Stack of secondary */}
+              <div className="flex flex-col">
+                {secondary.map((article, i) => (
+                  <Link
+                    key={article.slug}
+                    href={`/${lang}/blog/${article.slug}`}
+                    className="block py-5 no-underline transition-colors"
+                    style={{
+                      color: "var(--color-text)",
+                      borderTop:
+                        i === 0
+                          ? "none"
+                          : "1px solid var(--color-border)",
+                    }}
+                  >
+                    <p
+                      className="eyebrow mb-2"
+                      style={{ color: "var(--color-secondary)" }}
+                    >
+                      {s.pillars[article.pillar].name}
+                    </p>
+                    <h3
+                      style={{
+                        fontSize: "1.1875rem",
+                        margin: 0,
+                        color: "var(--color-primary)",
+                        lineHeight: 1.3,
+                        letterSpacing: "-0.01em",
+                      }}
+                    >
+                      {article.title}
+                    </h3>
+                    <p
+                      className="mt-2 text-sm"
+                      style={{
+                        color: "var(--color-text-muted)",
+                        fontFamily: "var(--font-ui)",
+                      }}
+                    >
+                      {article.reading_time_min}{" "}
+                      {lang === "es" ? "min de lectura" : "min read"}
+                    </p>
+                  </Link>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {articles.length > 0 && (
+            <div className="mt-10">
+              <Link
+                href={`/${lang}/blog`}
+                className="inline-flex items-center gap-2 no-underline"
+                style={{
+                  fontFamily: "var(--font-ui)",
+                  fontSize: "0.95rem",
+                  fontWeight: 500,
+                  color: "var(--color-secondary)",
+                  letterSpacing: "0.04em",
+                  textTransform: "uppercase",
+                }}
+              >
+                {lang === "es" ? "Ver todos los artículos" : "Browse all articles"}
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none">
+                  <path
+                    d="M5 12h14M13 6l6 6-6 6"
+                    stroke="currentColor"
+                    strokeWidth="2"
+                    strokeLinecap="round"
+                    strokeLinejoin="round"
+                  />
+                </svg>
+              </Link>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* ── Editorial letter ────────────────────────────────────── */}
+      <section className="py-20 lg:py-28">
+        <div className="container-narrow">
+          <p className="eyebrow eyebrow-accent mb-5">
+            {s.home.letterEyebrow}
+          </p>
+          <h2
+            className="mb-7 max-w-[20ch]"
+            style={{
+              fontSize: "clamp(1.875rem, 3.6vw, 2.5rem)",
+              color: "var(--color-primary)",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.15,
+            }}
+          >
+            {s.home.letterTitle}
+          </h2>
+          <p
+            className="max-w-2xl"
+            style={{
+              fontSize: "1.1875rem",
+              lineHeight: 1.7,
+              color: "var(--color-text-soft)",
+              fontFamily: "var(--font-body)",
+            }}
+          >
+            {s.home.letterBody}
+          </p>
+          <p
+            className="mt-6 italic"
+            style={{
+              fontFamily: "var(--font-display)",
+              fontSize: "1.0625rem",
+              color: "var(--color-text-muted)",
+            }}
+          >
+            {s.home.letterSignature}
+          </p>
+        </div>
+      </section>
+
+      {/* ── Pillars ─────────────────────────────────────────────── */}
+      <section
+        className="py-20 lg:py-28"
+        style={{
+          backgroundColor: "var(--color-surface-2)",
+        }}
+      >
+        <div className="container-narrow">
+          <SectionHead
+            eyebrow={s.home.pillarsEyebrow}
             title={s.home.pillarsTitle}
             subtitle={s.home.pillarsSubtitle}
           />
-          <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-10 lg:mt-14">
             {pillars.map((p) => (
               <PillarCard
                 key={p.slug}
@@ -149,34 +268,50 @@ export default function HomePage({ params }: PageProps) {
                 pillar={p}
                 name={s.pillars[p.slug].name}
                 question={s.pillars[p.slug].question}
+                blurb={s.pillars[p.slug].blurb}
               />
             ))}
+            {/* Closing border */}
+            <div
+              style={{ borderTop: "1px solid var(--color-border)", marginTop: 0 }}
+            />
           </div>
         </div>
       </section>
 
-      {/* Newsletter */}
-      <section className="container-wide py-24">
-        <div className="max-w-2xl mx-auto text-center">
+      {/* ── Newsletter ──────────────────────────────────────────── */}
+      <section
+        className="py-20 lg:py-28"
+        style={{ backgroundColor: "var(--color-surface)" }}
+      >
+        <div className="container-narrow text-center">
+          <p className="eyebrow eyebrow-accent mb-5">
+            {s.home.newsletterEyebrow}
+          </p>
           <h2
-            className="mb-3"
-            style={{ fontSize: "var(--text-h2)", color: "var(--color-primary)" }}
+            className="mb-4 max-w-[18ch] mx-auto"
+            style={{
+              fontSize: "clamp(1.75rem, 3.2vw, 2.25rem)",
+              color: "var(--color-primary)",
+              letterSpacing: "-0.02em",
+              lineHeight: 1.15,
+            }}
           >
             {s.home.newsletterTitle}
           </h2>
           <p
-            className="mb-8"
+            className="mb-8 max-w-xl mx-auto"
             style={{
-              fontSize: "1.125rem",
+              fontSize: "1.0625rem",
+              lineHeight: 1.65,
               color: "var(--color-text-soft)",
-              lineHeight: 1.6,
             }}
           >
             {s.home.newsletterSubtitle}
           </p>
           <NewsletterForm strings={s.home} />
           <p
-            className="mt-4 text-sm"
+            className="mt-5 text-sm"
             style={{
               fontFamily: "var(--font-ui)",
               color: "var(--color-text-muted)",
@@ -190,58 +325,41 @@ export default function HomePage({ params }: PageProps) {
   );
 }
 
-function SectionHeader({
+function SectionHead({
+  eyebrow,
   title,
   subtitle,
 }: {
+  eyebrow: string;
   title: string;
-  subtitle: string;
+  subtitle?: string;
 }) {
   return (
-    <div className="max-w-2xl mb-10 lg:mb-12">
+    <div className="max-w-2xl">
+      <p className="eyebrow eyebrow-accent mb-4">{eyebrow}</p>
       <h2
         className="mb-3"
         style={{
-          fontSize: "var(--text-h2)",
+          fontSize: "clamp(1.875rem, 3.6vw, 2.5rem)",
           color: "var(--color-primary)",
-          letterSpacing: "-0.015em",
+          letterSpacing: "-0.02em",
+          lineHeight: 1.15,
         }}
       >
         {title}
       </h2>
-      <p
-        style={{
-          fontSize: "1.125rem",
-          color: "var(--color-text-soft)",
-          lineHeight: 1.6,
-        }}
-      >
-        {subtitle}
-      </p>
+      {subtitle && (
+        <p
+          style={{
+            fontSize: "1.125rem",
+            color: "var(--color-text-soft)",
+            lineHeight: 1.55,
+            margin: 0,
+          }}
+        >
+          {subtitle}
+        </p>
+      )}
     </div>
-  );
-}
-
-function TrustSignal({ label }: { label: string }) {
-  return (
-    <span className="inline-flex items-center gap-2 text-[0.95rem]">
-      <svg
-        width="18"
-        height="18"
-        viewBox="0 0 24 24"
-        fill="none"
-        aria-hidden="true"
-        style={{ color: "var(--color-accent)" }}
-      >
-        <path
-          d="M5 12.5l4 4 10-10"
-          stroke="currentColor"
-          strokeWidth="2.5"
-          strokeLinecap="round"
-          strokeLinejoin="round"
-        />
-      </svg>
-      {label}
-    </span>
   );
 }

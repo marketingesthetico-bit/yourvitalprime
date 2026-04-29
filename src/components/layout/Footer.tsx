@@ -30,12 +30,15 @@ export function Footer({ lang }: FooterProps) {
     { href: `/${lang}/disclaimer`, label: strings.footer.links.disclaimer },
   ];
 
+  const baseTextColor = "color-mix(in srgb, var(--color-surface) 78%, transparent)";
+  const subTextColor = "color-mix(in srgb, var(--color-surface) 55%, transparent)";
+
   return (
     <footer
       className="mt-24 pt-16 pb-10"
       style={{
-        backgroundColor: "var(--color-primary)",
-        color: "color-mix(in srgb, var(--color-surface) 85%, transparent)",
+        backgroundColor: "var(--color-surface-ink)",
+        color: baseTextColor,
       }}
     >
       <div className="container-wide">
@@ -45,24 +48,23 @@ export function Footer({ lang }: FooterProps) {
               <Logo lang={lang} />
             </div>
             <p
-              className="mt-4 max-w-md text-[1rem] leading-relaxed"
-              style={{ color: "color-mix(in srgb, var(--color-surface) 75%, transparent)" }}
+              className="mt-5 max-w-md text-[1rem] leading-relaxed"
+              style={{ color: baseTextColor }}
             >
               {strings.footer.description}
             </p>
 
-            {/* Language switcher */}
+            {/* Language switcher — quieter */}
             <div
-              className="mt-6 flex items-center gap-2 text-sm"
+              className="mt-6 flex items-center gap-3 text-sm"
               style={{
                 fontFamily: "var(--font-ui)",
-                color: "color-mix(in srgb, var(--color-surface) 60%, transparent)",
+                color: subTextColor,
               }}
             >
-              <span aria-hidden="true">🌐</span>
               {locales.map((loc, i) => (
-                <span key={loc} className="flex items-center gap-2">
-                  {i > 0 && <span aria-hidden="true">·</span>}
+                <span key={loc} className="flex items-center gap-3">
+                  {i > 0 && <span aria-hidden="true">/</span>}
                   <Link
                     href={`/${loc}`}
                     aria-current={loc === lang ? "page" : undefined}
@@ -71,7 +73,7 @@ export function Footer({ lang }: FooterProps) {
                       color:
                         loc === lang
                           ? "var(--color-secondary)"
-                          : "color-mix(in srgb, var(--color-surface) 80%, transparent)",
+                          : baseTextColor,
                       fontWeight: loc === lang ? 600 : 400,
                     }}
                   >
@@ -96,25 +98,38 @@ export function Footer({ lang }: FooterProps) {
           />
         </div>
 
+        {/* Editorial signature line */}
         <div
-          className="mt-14 pt-8 border-t flex flex-col gap-4 text-sm"
+          className="mt-14 pt-8"
           style={{
-            borderColor: "color-mix(in srgb, var(--color-surface) 18%, transparent)",
+            borderTop: "1px solid color-mix(in srgb, var(--color-surface) 12%, transparent)",
             fontFamily: "var(--font-ui)",
           }}
         >
           <p
-            className="leading-relaxed max-w-3xl"
-            style={{ color: "color-mix(in srgb, var(--color-surface) 65%, transparent)" }}
+            className="leading-relaxed max-w-3xl text-sm"
+            style={{ color: baseTextColor }}
           >
             <strong style={{ color: "var(--color-surface)" }}>
               {lang === "es" ? "Aviso médico:" : "Medical disclaimer:"}
             </strong>{" "}
             {strings.footer.medicalDisclaimer}
           </p>
-          <p style={{ color: "color-mix(in srgb, var(--color-surface) 55%, transparent)" }}>
-            {strings.footer.copyright.replace("{year}", String(year))}
-          </p>
+          <div className="mt-6 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+            <p
+              className="text-sm italic"
+              style={{
+                color: subTextColor,
+                fontFamily: "var(--font-display)",
+                fontSize: "0.95rem",
+              }}
+            >
+              {strings.footer.signature}
+            </p>
+            <p className="text-sm" style={{ color: subTextColor }}>
+              {strings.footer.copyright.replace("{year}", String(year))}
+            </p>
+          </div>
         </div>
       </div>
     </footer>
@@ -135,8 +150,8 @@ function FooterColumn({
         style={{
           fontFamily: "var(--font-ui)",
           fontWeight: 600,
-          letterSpacing: "0.08em",
-          color: "var(--color-surface)",
+          letterSpacing: "0.12em",
+          color: "var(--color-secondary)",
         }}
       >
         {title}
@@ -148,7 +163,7 @@ function FooterColumn({
               href={link.href}
               className="text-[0.95rem] no-underline transition-colors"
               style={{
-                color: "color-mix(in srgb, var(--color-surface) 80%, transparent)",
+                color: "color-mix(in srgb, var(--color-surface) 78%, transparent)",
               }}
             >
               {link.label}
