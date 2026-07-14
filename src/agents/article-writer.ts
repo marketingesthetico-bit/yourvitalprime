@@ -175,10 +175,11 @@ ${input.competitor_analysis.serp_features.join(", ")}
 ARTICLE REQUIREMENTS:
 
 Title:
-- Must include the exact keyword naturally
-- Emotionally resonant — speaks to the reader's fear or goal
-- 55-65 characters
+- The exact phrase "${input.keyword}" must appear verbatim, character-for-character (case-insensitive), somewhere in the title. This is a hard requirement checked by an automated SEO audit — do not paraphrase, reorder, abbreviate, or drop any word from the keyword phrase. If the phrase is long or awkward, wrap it with a short lead-in or trailing clause rather than altering it (e.g. keyword "how to increase bone density after 50" → "How to Increase Bone Density After 50: A Practical Guide").
+- Beyond containing the exact phrase, make it emotionally resonant — speaks to the reader's fear or goal
+- Keep it close to 55-65 characters, but the verbatim keyword requirement above always wins if the two conflict
 - No clickbait. No "you won't believe" style.
+- The H1 at the very start of content_mdx and the opening sentence (first 100 words) must ALSO contain the exact keyword phrase verbatim — plan the hook around it rather than bolting it on.
 
 Structure:
 1. Hook (2-3 paragraphs) — Start with the reader's experience. No definition. No "what is X".

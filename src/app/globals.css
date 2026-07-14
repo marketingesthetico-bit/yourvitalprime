@@ -107,14 +107,22 @@ h3 { font-size: var(--text-h3); }
 
 a {
   color: var(--color-primary);
-  text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
-  text-underline-offset: 3px;
-  text-decoration-thickness: 1.5px;
+  text-decoration: none;
   transition: color 0.15s ease, text-decoration-color 0.15s ease;
 }
 a:hover {
   color: var(--color-secondary);
+}
+
+/* Inline links within long-form article body copy keep an underline —
+   they need a non-color affordance since they sit inside running text. */
+.prose-vital a {
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--color-primary) 30%, transparent);
+  text-underline-offset: 3px;
+  text-decoration-thickness: 1.5px;
+}
+.prose-vital a:hover {
   text-decoration-color: var(--color-secondary);
 }
 a:focus-visible {

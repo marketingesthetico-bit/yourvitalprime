@@ -18,7 +18,10 @@ type QueuedKeyword = {
   pillar: string;
   kd_est: number;
   volume_est: number;
+  failure_count?: number;
 };
+
+const MAX_KEYWORD_RETRIES = 3;
 
 const DEFAULT_COMPETITOR_ANALYSIS: CompetitorAnalysis = {
   avg_word_count: 1800,
@@ -63,10 +66,12 @@ async function handle(request: NextRequest) {
   const startTime = Date.now();
   const runId = `run_${Date.now()}`;
   const db = getDb();
+  let selectedKeyword: QueuedKeyword | null = null;
 
   try {
     console.log(`[pipeline ${runId}] selecting keyword`);
     const keyword = await selectTopKeyword(db);
+    selectedKeyword = keyword;
     if (!keyword) {
       return NextResponse.json({
         success: false,
@@ -193,6 +198,26 @@ async function handle(request: NextRequest) {
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     console.error(`[pipeline ${runId}] error:`, error);
+    if (selectedKeyword) {
+      const failureCount = (selectedKeyword.failure_count ?? 0) + 1;
+      const giveUp = failureCount >= MAX_KEYWORD_RETRIES;
+      await db
+        .collection("keywords")
+        .doc(selectedKeyword.id)
+        .update({
+          status: giveUp ? "failed" : "queued",
+          pipeline_run_id: null,
+          failure_count: failureCount,
+          last_error: message,
+          last_failed_at: FieldValue.serverTimestamp(),
+        })
+        .catch((updateError) =>
+          console.error(
+            `[pipeline ${runId}] failed to requeue keyword:`,
+            updateError
+          )
+        );
+    }
     return NextResponse.json(
       { success: false, run_id: runId, error: message },
       { status: 500 }
