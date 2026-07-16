@@ -313,6 +313,24 @@ button, a.btn, [role="button"] {
   }
   .prose-vital li { margin-block: 0.5em; }
   .prose-vital ul li::marker { color: var(--color-secondary); }
+  .prose-vital figure.inline-photo {
+    margin: 2.5em 0;
+  }
+  .prose-vital figure.inline-photo img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-card, 12px);
+    display: block;
+    aspect-ratio: 16 / 10;
+    object-fit: cover;
+  }
+  .prose-vital figure.inline-photo figcaption {
+    font-family: var(--font-ui);
+    font-size: 0.8125rem;
+    color: var(--color-text-muted);
+    text-align: center;
+    margin-top: 0.5rem;
+  }
   .prose-vital blockquote {
     margin-block: 1.75em;
     padding: 1rem 1.5rem;

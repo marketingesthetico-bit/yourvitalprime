@@ -5,10 +5,16 @@ import { isLocale, type Locale } from "@/lib/i18n/config";
 import { getStrings } from "@/lib/i18n/strings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ArticleCard } from "@/components/article/ArticleCard";
-import { listPublishedArticles } from "@/lib/articles";
+import { Pagination } from "@/components/ui/Pagination";
+import { listPublishedArticles, countPublishedArticles } from "@/lib/articles";
 import { pillars } from "@/content/pillars";
 
-type PageProps = { params: { lang: string } };
+const PAGE_SIZE = 24;
+
+type PageProps = {
+  params: { lang: string };
+  searchParams: { page?: string };
+};
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
@@ -25,15 +31,22 @@ export function generateMetadata({ params }: PageProps): Metadata {
   };
 }
 
-export default async function BlogIndex({ params }: PageProps) {
+export default async function BlogIndex({ params, searchParams }: PageProps) {
   if (!isLocale(params.lang)) notFound();
   const lang: Locale = params.lang;
   const s = getStrings(lang);
   const isEs = lang === "es";
 
-  const articles = await listPublishedArticles({ lang, limit: 24 }).catch(
-    () => []
-  );
+  const page = Math.max(1, Number(searchParams.page ?? "1") || 1);
+  const [articles, total] = await Promise.all([
+    listPublishedArticles({
+      lang,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }).catch(() => []),
+    countPublishedArticles({ lang }).catch(() => 0),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <>
@@ -90,6 +103,13 @@ export default async function BlogIndex({ params }: PageProps) {
             ))}
           </div>
         )}
+
+        <Pagination
+          lang={lang}
+          page={page}
+          totalPages={totalPages}
+          basePath={`/${lang}/blog`}
+        />
       </section>
     </>
   );

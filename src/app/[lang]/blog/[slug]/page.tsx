@@ -67,7 +67,10 @@ export default async function ArticlePage({ params }: PageProps) {
   const article = await getArticleBySlug(params.slug, lang).catch(() => null);
   if (!article) notFound();
 
-  const { html, headings } = await renderArticleMarkdown(article.content_mdx);
+  const { html, headings } = await renderArticleMarkdown(
+    article.content_mdx,
+    article.inline_images ?? []
+  );
 
   const related = await listPublishedArticles({
     lang,
@@ -186,6 +189,27 @@ export default async function ArticlePage({ params }: PageProps) {
               className="absolute inset-0 w-full h-full object-cover"
             />
           </div>
+          {article.featured_image_credit && (
+            <p
+              className="text-center"
+              style={{
+                fontFamily: "var(--font-ui)",
+                fontSize: "0.8125rem",
+                color: "var(--color-text-muted)",
+                marginTop: "0.5rem",
+              }}
+            >
+              {isEs ? "Foto:" : "Photo:"}{" "}
+              <a
+                href={article.featured_image_credit.photographer_url}
+                target="_blank"
+                rel="noopener nofollow"
+              >
+                {article.featured_image_credit.photographer}
+              </a>{" "}
+              / {article.featured_image_credit.source}
+            </p>
+          )}
         </div>
       )}
 

@@ -124,14 +124,14 @@ async function handle(request: NextRequest) {
       );
     }
 
-    console.log(`[pipeline ${runId}] generating images`);
+    console.log(`[pipeline ${runId}] finding stock photos`);
     const images = await generateArticleImages({
       slug: draft.slug,
-      featured_prompt: draft.featured_image_prompt,
-      inline_prompts: draft.inline_image_prompts,
+      featured_query: draft.featured_image_query,
+      inline_queries: draft.inline_image_queries,
     });
     console.log(
-      `[pipeline ${runId}] images featured=${!!images.featured_url} inline=${images.inline_urls.length}`
+      `[pipeline ${runId}] images featured=${!!images.featured} inline=${images.inline.length}`
     );
 
     console.log(`[pipeline ${runId}] publishing to Firestore`);
@@ -145,8 +145,9 @@ async function handle(request: NextRequest) {
       pillar: keyword.pillar,
       content_mdx: humanized.content,
       content_html: humanized.content,
-      featured_image_url: images.featured_url || null,
-      inline_images: images.inline_urls,
+      featured_image_url: images.featured?.url || null,
+      featured_image_credit: images.featured?.credit || null,
+      inline_images: images.inline,
       word_count: draft.word_count,
       seo_score: seoAudit.score,
       seo_issues: seoAudit.issues,

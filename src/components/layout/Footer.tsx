@@ -128,6 +128,25 @@ export function Footer({ lang }: FooterProps) {
             </p>
             <p className="text-sm" style={{ color: subTextColor }}>
               {strings.footer.copyright.replace("{year}", String(year))}
+              {" · "}
+              {lang === "es" ? "Fotografía: " : "Photography: "}
+              <a
+                href="https://unsplash.com"
+                target="_blank"
+                rel="noopener nofollow"
+                style={{ color: subTextColor }}
+              >
+                Unsplash
+              </a>
+              {" & "}
+              <a
+                href="https://www.pexels.com"
+                target="_blank"
+                rel="noopener nofollow"
+                style={{ color: subTextColor }}
+              >
+                Pexels
+              </a>
             </p>
           </div>
         </div>

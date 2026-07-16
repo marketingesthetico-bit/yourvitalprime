@@ -1,0 +1,32 @@
+{
+  "hero-home.jpg": {
+    "photographer": "Age Cymru",
+    "photographerUrl": "https://unsplash.com/@agecymru",
+    "source": "unsplash"
+  },
+  "letter-section.jpg": {
+    "photographer": "Andrew M",
+    "photographerUrl": "https://unsplash.com/@andymant",
+    "source": "unsplash"
+  },
+  "pillars-banner.jpg": {
+    "photographer": "atelierbyvineeth ...",
+    "photographerUrl": "https://unsplash.com/@atelierbyvineeth",
+    "source": "unsplash"
+  },
+  "newsletter-bg.jpg": {
+    "photographer": "Markus Spiske",
+    "photographerUrl": "https://unsplash.com/@markusspiske",
+    "source": "unsplash"
+  },
+  "about-detail.jpg": {
+    "photographer": "Giorgio Trovato",
+    "photographerUrl": "https://unsplash.com/@giorgiotrovato",
+    "source": "unsplash"
+  },
+  "og-default.jpg": {
+    "photographer": "Priscilla Du Preez 🇨🇦",
+    "photographerUrl": "https://unsplash.com/@priscilladupreez",
+    "source": "unsplash"
+  }
+}

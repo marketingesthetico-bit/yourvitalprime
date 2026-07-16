@@ -14,7 +14,7 @@ export function ArticleSchema({ article, url }: Props) {
     description: article.meta_description,
     image: article.featured_image_url
       ? [article.featured_image_url]
-      : ["https://yourvitalprime.com/og-default.jpg"],
+      : ["https://yourvitalprime.com/images/og-default.jpg"],
     datePublished: article.published_at ?? undefined,
     dateModified: article.published_at ?? undefined,
     author: {

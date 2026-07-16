@@ -1,164 +1,140 @@
-import { getOpenAI, OPENAI_IMAGE_MODEL, isOpenAIConfigured } from "@/lib/openai";
-import { generateStabilityImage, isStabilityConfigured } from "@/lib/stability";
-import { getBucket, isFirebaseConfigured } from "@/lib/firebase";
+import { FieldValue } from "firebase-admin/firestore";
+import {
+  isUnsplashConfigured,
+  searchUnsplashPhotos,
+  trackUnsplashDownload,
+  type StockPhoto as UnsplashPhoto,
+} from "@/lib/unsplash";
+import {
+  isPexelsConfigured,
+  searchPexelsPhotos,
+  type StockPhoto as PexelsPhoto,
+} from "@/lib/pexels";
+import { getDb, isFirebaseConfigured } from "@/lib/firebase";
 
 export interface ImageGenInput {
   slug: string;
-  featured_prompt: string;
-  inline_prompts: [string, string];
+  featured_query: string;
+  inline_queries: [string, string];
+}
+
+export interface ArticleImage {
+  url: string;
+  alt: string;
+  credit: {
+    photographer: string;
+    photographer_url: string;
+    source: "unsplash" | "pexels";
+  };
 }
 
 export interface ImageGenResult {
-  featured_url: string;
-  inline_urls: string[];
+  featured: ArticleImage | null;
+  inline: ArticleImage[];
 }
 
-const FEATURED_SUFFIX =
-  ". Warm editorial photography. Natural light. Authentic, not stock-photo. No text, no watermarks. 16:9 aspect ratio.";
-const INLINE_SUFFIX =
-  ". Editorial illustration style, brand palette of deep navy, warm amber, sage green and cream. No text. 16:10 aspect ratio.";
+type StockPhoto = UnsplashPhoto | PexelsPhoto;
+
+const USED_IMAGES_COLLECTION = "used_stock_images";
 
 /**
- * Generate the 3 article images and upload them to Firebase Storage.
- * - Featured image via DALL-E 3 (1792x1024)
- * - Inline images via Stability AI (cheaper for volume)
- *
- * Falls back gracefully if any provider is misconfigured: returns empty
- * URLs for that slot rather than failing the whole pipeline.
+ * Find topic-relevant stock photos for the featured + inline slots of one
+ * article, sourced from Unsplash (preferred) with Pexels as fallback.
+ * Every pick is checked against every photo already used anywhere on the
+ * site so images never repeat across articles.
  */
 export async function generateArticleImages(
   input: ImageGenInput
 ): Promise<ImageGenResult> {
-  const featuredUrl = await generateAndStoreFeatured(
-    input.slug,
-    input.featured_prompt
+  const usedIds = await getUsedImageIds();
+
+  const featured = await pickAndReserve(
+    input.featured_query,
+    usedIds,
+    input.slug
   );
 
-  const inlineUrls: string[] = [];
-  for (let i = 0; i < input.inline_prompts.length; i += 1) {
-    const url = await generateAndStoreInline(
-      input.slug,
-      i,
-      input.inline_prompts[i]
-    );
-    if (url) inlineUrls.push(url);
+  const inline: ArticleImage[] = [];
+  for (const query of input.inline_queries) {
+    const pick = await pickAndReserve(query, usedIds, input.slug);
+    if (pick) inline.push(pick);
   }
 
-  return { featured_url: featuredUrl, inline_urls: inlineUrls };
+  return { featured, inline };
 }
 
-async function generateAndStoreFeatured(
-  slug: string,
-  prompt: string
-): Promise<string> {
-  if (!isOpenAIConfigured()) {
-    console.warn("[image-gen] OpenAI not configured, skipping featured image.");
-    return "";
-  }
-  if (!isFirebaseConfigured()) {
-    console.warn("[image-gen] Firebase Storage not configured.");
-    return "";
+async function pickAndReserve(
+  query: string,
+  usedIds: Set<string>,
+  slug: string
+): Promise<ArticleImage | null> {
+  const photo = await pickStockPhoto(query, usedIds);
+  if (!photo) {
+    console.warn(`[image-gen] no unused stock photo found for "${query}"`);
+    return null;
   }
 
+  usedIds.add(`${photo.source}:${photo.id}`);
+  await reserveImage(photo, slug);
+
+  if (photo.source === "unsplash") {
+    trackUnsplashDownload((photo as UnsplashPhoto).downloadLocation);
+  }
+
+  return {
+    url: photo.url,
+    alt: photo.alt,
+    credit: {
+      photographer: photo.photographerName,
+      photographer_url: photo.photographerUrl,
+      source: photo.source,
+    },
+  };
+}
+
+async function pickStockPhoto(
+  query: string,
+  usedIds: Set<string>
+): Promise<StockPhoto | null> {
+  if (isUnsplashConfigured()) {
+    const results = await searchUnsplashPhotos(query);
+    const unused = results.find((p) => !usedIds.has(`unsplash:${p.id}`));
+    if (unused) return unused;
+  }
+
+  if (isPexelsConfigured()) {
+    const results = await searchPexelsPhotos(query);
+    const unused = results.find((p) => !usedIds.has(`pexels:${p.id}`));
+    if (unused) return unused;
+  }
+
+  return null;
+}
+
+async function getUsedImageIds(): Promise<Set<string>> {
+  if (!isFirebaseConfigured()) return new Set();
   try {
-    const response = await getOpenAI().images.generate({
-      model: OPENAI_IMAGE_MODEL,
-      prompt: prompt + FEATURED_SUFFIX,
-      size: "1792x1024",
-      quality: "standard",
-      n: 1,
-      response_format: "b64_json",
-    });
-
-    const b64 = response.data?.[0]?.b64_json;
-    if (!b64) throw new Error("No image data returned by OpenAI.");
-    const bytes = Buffer.from(b64, "base64");
-    return await uploadToStorage(
-      `articles/${slug}/featured.png`,
-      bytes,
-      "image/png"
-    );
+    const refs = await getDb().collection(USED_IMAGES_COLLECTION).listDocuments();
+    return new Set(refs.map((r) => r.id));
   } catch (error) {
-    console.error("[image-gen] Featured image failed:", error);
-    return "";
+    console.warn("[image-gen] failed to load used-image ledger:", error);
+    return new Set();
   }
 }
 
-async function generateAndStoreInline(
-  slug: string,
-  index: number,
-  prompt: string
-): Promise<string> {
-  // Prefer Stability AI for inline (cheaper); fall back to OpenAI if not configured.
-  const provider = isStabilityConfigured()
-    ? "stability"
-    : isOpenAIConfigured()
-      ? "openai"
-      : null;
-
-  if (!provider) {
-    console.warn(
-      `[image-gen] No image provider configured for inline image ${index}.`
+async function reserveImage(photo: StockPhoto, slug: string): Promise<void> {
+  if (!isFirebaseConfigured()) return;
+  const id = `${photo.source}_${photo.id}`;
+  await getDb()
+    .collection(USED_IMAGES_COLLECTION)
+    .doc(id)
+    .set({
+      source: photo.source,
+      photo_id: photo.id,
+      used_in_slug: slug,
+      used_at: FieldValue.serverTimestamp(),
+    })
+    .catch((error) =>
+      console.warn(`[image-gen] failed to reserve ${id}:`, error)
     );
-    return "";
-  }
-  if (!isFirebaseConfigured()) {
-    console.warn("[image-gen] Firebase Storage not configured.");
-    return "";
-  }
-
-  try {
-    let bytes: Buffer;
-    let contentType: string;
-
-    if (provider === "stability") {
-      const result = await generateStabilityImage({
-        prompt: prompt + INLINE_SUFFIX,
-        aspectRatio: "16:9",
-        outputFormat: "jpeg",
-        negativePrompt: "text, watermark, logo, low quality, blurry",
-      });
-      bytes = result.bytes;
-      contentType = result.contentType;
-    } else {
-      const response = await getOpenAI().images.generate({
-        model: OPENAI_IMAGE_MODEL,
-        prompt: prompt + INLINE_SUFFIX,
-        size: "1792x1024",
-        quality: "standard",
-        n: 1,
-        response_format: "b64_json",
-      });
-      const b64 = response.data?.[0]?.b64_json;
-      if (!b64) throw new Error("No image data returned by OpenAI.");
-      bytes = Buffer.from(b64, "base64");
-      contentType = "image/png";
-    }
-
-    const ext = contentType.endsWith("png") ? "png" : "jpg";
-    return await uploadToStorage(
-      `articles/${slug}/inline-${index + 1}.${ext}`,
-      bytes,
-      contentType
-    );
-  } catch (error) {
-    console.error(`[image-gen] Inline ${index} failed:`, error);
-    return "";
-  }
-}
-
-async function uploadToStorage(
-  path: string,
-  bytes: Buffer,
-  contentType: string
-): Promise<string> {
-  const bucket = getBucket();
-  const file = bucket.file(path);
-  await file.save(bytes, {
-    metadata: { contentType, cacheControl: "public, max-age=31536000, immutable" },
-    resumable: false,
-  });
-  // Make public for direct CDN serving via Firebase
-  await file.makePublic();
-  return `https://storage.googleapis.com/${bucket.name}/${path}`;
 }

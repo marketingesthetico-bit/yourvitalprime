@@ -4,6 +4,18 @@ import type { PillarSlug } from "@/content/pillars";
 
 export type FaqItem = { question: string; answer: string };
 
+export type ImageCredit = {
+  photographer: string;
+  photographer_url: string;
+  source: "unsplash" | "pexels";
+};
+
+export type ArticleImage = {
+  url: string;
+  alt: string;
+  credit?: ImageCredit | null;
+};
+
 export type Article = {
   slug: string;
   lang: Locale;
@@ -15,7 +27,8 @@ export type Article = {
   content_mdx: string;
   content_html?: string | null;
   featured_image_url?: string | null;
-  inline_images?: string[];
+  featured_image_credit?: ImageCredit | null;
+  inline_images?: ArticleImage[];
   word_count: number;
   reading_time_min: number;
   seo_score?: number;
@@ -43,6 +56,24 @@ function toIso(value: unknown): string | null {
   return null;
 }
 
+// Older articles stored inline_images as string[] (raw AI-generated image
+// URLs). Current articles store ArticleImage[] with alt text + credit.
+function normalizeInlineImages(value: unknown): ArticleImage[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .map((item): ArticleImage | null => {
+      if (typeof item === "string") {
+        return item ? { url: item, alt: "", credit: null } : null;
+      }
+      if (item && typeof item === "object" && typeof (item as ArticleImage).url === "string") {
+        const img = item as ArticleImage;
+        return { url: img.url, alt: img.alt ?? "", credit: img.credit ?? null };
+      }
+      return null;
+    })
+    .filter((img): img is ArticleImage => img !== null);
+}
+
 function normalize(raw: Record<string, unknown>): Article {
   return {
     slug: String(raw.slug),
@@ -57,9 +88,8 @@ function normalize(raw: Record<string, unknown>): Article {
     content_mdx: String(raw.content_mdx ?? ""),
     content_html: (raw.content_html as string | null) ?? null,
     featured_image_url: (raw.featured_image_url as string | null) ?? null,
-    inline_images: Array.isArray(raw.inline_images)
-      ? (raw.inline_images as string[])
-      : [],
+    featured_image_credit: (raw.featured_image_credit as ImageCredit | null) ?? null,
+    inline_images: normalizeInlineImages(raw.inline_images),
     word_count: Number(raw.word_count ?? 0),
     reading_time_min: Number(raw.reading_time_min ?? 1),
     seo_score: typeof raw.seo_score === "number" ? raw.seo_score : undefined,
@@ -93,14 +123,14 @@ export type ListOptions = {
   lang: Locale;
   pillar?: PillarSlug;
   limit?: number;
+  offset?: number;
   excludeSlug?: string;
 };
 
-export async function listPublishedArticles(
-  opts: ListOptions
-): Promise<Article[]> {
-  if (!isFirebaseConfigured()) return [];
-  const db = getDb();
+function publishedQuery(
+  db: FirebaseFirestore.Firestore,
+  opts: Pick<ListOptions, "lang" | "pillar">
+): FirebaseFirestore.Query {
   let query = db
     .collection("articles")
     .where("status", "==", "published")
@@ -110,13 +140,31 @@ export async function listPublishedArticles(
     query = query.where("pillar", "==", opts.pillar);
   }
 
-  query = query.orderBy("published_at", "desc");
+  return query;
+}
+
+export async function listPublishedArticles(
+  opts: ListOptions
+): Promise<Article[]> {
+  if (!isFirebaseConfigured()) return [];
+  const db = getDb();
+  let query = publishedQuery(db, opts).orderBy("published_at", "desc");
+  if (opts.offset) query = query.offset(opts.offset);
   if (opts.limit) query = query.limit(opts.limit);
 
   const snapshot = await query.get();
   return snapshot.docs
     .map((doc) => normalize({ ...doc.data(), slug: doc.id }))
     .filter((article) => article.slug !== opts.excludeSlug);
+}
+
+export async function countPublishedArticles(
+  opts: Pick<ListOptions, "lang" | "pillar">
+): Promise<number> {
+  if (!isFirebaseConfigured()) return 0;
+  const db = getDb();
+  const snapshot = await publishedQuery(db, opts).count().get();
+  return snapshot.data().count;
 }
 
 /**

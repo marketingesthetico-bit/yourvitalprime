@@ -5,10 +5,16 @@ import { getStrings } from "@/lib/i18n/strings";
 import { PageHeader } from "@/components/layout/PageHeader";
 import { ArticleCard } from "@/components/article/ArticleCard";
 import { SiteImage } from "@/components/ui/SiteImage";
-import { listPublishedArticles } from "@/lib/articles";
+import { Pagination } from "@/components/ui/Pagination";
+import { listPublishedArticles, countPublishedArticles } from "@/lib/articles";
 import { pillars, type PillarSlug } from "@/content/pillars";
 
-type PageProps = { params: { lang: string; pillar: string } };
+const PAGE_SIZE = 24;
+
+type PageProps = {
+  params: { lang: string; pillar: string };
+  searchParams: { page?: string };
+};
 
 export const dynamic = "force-dynamic";
 export const revalidate = 60;
@@ -37,7 +43,7 @@ export function generateMetadata({ params }: PageProps): Metadata {
   };
 }
 
-export default async function PillarPage({ params }: PageProps) {
+export default async function PillarPage({ params, searchParams }: PageProps) {
   if (!isLocale(params.lang)) notFound();
   if (!isPillarSlug(params.pillar)) notFound();
 
@@ -47,11 +53,17 @@ export default async function PillarPage({ params }: PageProps) {
   const pillarStrings = s.pillars[pillarSlug];
   const isEs = lang === "es";
 
-  const articles = await listPublishedArticles({
-    lang,
-    pillar: pillarSlug,
-    limit: 24,
-  }).catch(() => []);
+  const page = Math.max(1, Number(searchParams.page ?? "1") || 1);
+  const [articles, total] = await Promise.all([
+    listPublishedArticles({
+      lang,
+      pillar: pillarSlug,
+      limit: PAGE_SIZE,
+      offset: (page - 1) * PAGE_SIZE,
+    }).catch(() => []),
+    countPublishedArticles({ lang, pillar: pillarSlug }).catch(() => 0),
+  ]);
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <>
@@ -105,6 +117,13 @@ export default async function PillarPage({ params }: PageProps) {
             ))}
           </div>
         )}
+
+        <Pagination
+          lang={lang}
+          page={page}
+          totalPages={totalPages}
+          basePath={`/${lang}/${pillarSlug}`}
+        />
       </section>
     </>
   );

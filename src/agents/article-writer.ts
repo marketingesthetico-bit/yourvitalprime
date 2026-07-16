@@ -28,8 +28,8 @@ export interface GeneratedArticle {
   meta_description: string;
   content_html: string;
   content_mdx: string;
-  featured_image_prompt: string;
-  inline_image_prompts: [string, string];
+  featured_image_query: string;
+  inline_image_queries: [string, string];
   schema_faq: FAQItem[];
   word_count: number;
   reading_time_min: number;
@@ -41,8 +41,8 @@ type RawArticleResponse = {
   slug: string;
   meta_description: string;
   content_mdx: string;
-  featured_image_prompt: string;
-  inline_image_prompts: [string, string];
+  featured_image_query: string;
+  inline_image_queries: [string, string];
   faq: FAQItem[];
 };
 
@@ -80,8 +80,8 @@ export async function generateArticle(
     meta_description: parsed.meta_description,
     content_html: parsed.content_mdx, // MDX→HTML transformation happens at render time
     content_mdx: parsed.content_mdx,
-    featured_image_prompt: parsed.featured_image_prompt,
-    inline_image_prompts: parsed.inline_image_prompts,
+    featured_image_query: parsed.featured_image_query,
+    inline_image_queries: parsed.inline_image_queries,
     schema_faq: parsed.faq,
     word_count: wordCount,
     reading_time_min: readingTime,
@@ -143,8 +143,8 @@ OUTPUT FORMAT: Return a JSON object exactly matching this schema (and NOTHING el
   "slug": "...",
   "meta_description": "...",
   "content_mdx": "full article in MDX with ## and ### headings",
-  "featured_image_prompt": "detailed image prompt for featured image",
-  "inline_image_prompts": ["prompt for image 1", "prompt for image 2"],
+  "featured_image_query": "short stock-photo search phrase for the featured image",
+  "inline_image_queries": ["search phrase for image 1", "search phrase for image 2"],
   "faq": [
     {"question": "...", "answer": "..."},
     {"question": "...", "answer": "..."},
@@ -195,10 +195,11 @@ External links to include:
 - Link to 1-2 PubMed or NIH studies you reference
 - Link to Mayo Clinic or NHS for one supporting fact
 
-Image prompts:
-- Featured image: Warm, editorial photography. Real-looking adults 55-65 in a setting relevant to the topic. Authentic, not stock-photo. Positive but realistic. No text in image. 16:9.
-- Inline image 1: Concept/data visualization relevant to the article's key mechanism.
-- Inline image 2: Practical/lifestyle scene showing someone doing the recommended action.
+Image search phrases (these are used verbatim to search Unsplash/Pexels for REAL photos — not AI-generated — so they must describe a scene that plausibly exists as a stock photo):
+- featured_image_query: 3-6 concrete English words describing a real, photographable scene tied to the topic — e.g. "senior woman lifting dumbbells gym" or "older man walking outdoors morning". Favor real people doing the article's subject activity. No abstract concepts, no brand names, no style words like "editorial" or "warm lighting" — those aren't searchable.
+- inline_image_queries[0]: a concrete scene tied to the article's key mechanism or evidence section — e.g. "doctor explaining chart patient" or "blood test vial lab".
+- inline_image_queries[1]: a concrete scene tied to the practical/action section — e.g. "senior couple cooking kitchen" or "man taking supplement pill glass of water".
+Each query must plausibly return a real, relevant stock photo. If unsure, favor simpler, more generic phrases over precise ones — a generic-but-relevant photo beats an empty search.
 
 Meta description: 150-160 chars, includes keyword, answers "what will I learn?", compels click.
 
