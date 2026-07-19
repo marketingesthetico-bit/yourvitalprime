@@ -11,16 +11,17 @@ type Strings = {
   successTitle: string;
   successBody: string;
   errorMessage: string;
+  submitErrorMessage: string;
   topics: { value: string; label: string }[];
   consentLabel: string;
 };
 
-type ContactFormProps = { strings: Strings };
+type ContactFormProps = { strings: Strings; lang: "en" | "es" };
 
-export function ContactForm({ strings }: ContactFormProps) {
-  const [status, setStatus] = useState<"idle" | "submitting" | "success" | "error">(
-    "idle"
-  );
+export function ContactForm({ strings, lang }: ContactFormProps) {
+  const [status, setStatus] = useState<
+    "idle" | "submitting" | "success" | "error" | "submit-error"
+  >("idle");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
@@ -29,6 +30,7 @@ export function ContactForm({ strings }: ContactFormProps) {
     const data = new FormData(form);
     const name = String(data.get("name") ?? "").trim();
     const email = String(data.get("email") ?? "").trim();
+    const topic = String(data.get("topic") ?? "general");
     const message = String(data.get("message") ?? "").trim();
     const consent = data.get("consent");
 
@@ -44,10 +46,18 @@ export function ContactForm({ strings }: ContactFormProps) {
     }
 
     setStatus("submitting");
-    // Wire to /api/contact in Phase 2/3. For now soft success.
-    await new Promise((r) => setTimeout(r, 700));
-    setStatus("success");
-    form.reset();
+    try {
+      const res = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ name, email, topic, message, lang }),
+      });
+      if (!res.ok) throw new Error("submit failed");
+      setStatus("success");
+      form.reset();
+    } catch {
+      setStatus("submit-error");
+    }
   };
 
   if (status === "success") {
@@ -67,6 +77,17 @@ export function ContactForm({ strings }: ContactFormProps) {
 
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-5">
+      {status === "submit-error" && (
+        <div
+          className="card p-4"
+          style={{ backgroundColor: "var(--color-danger)", opacity: 0.95 }}
+          role="alert"
+        >
+          <p style={{ margin: 0, color: "var(--color-surface)" }}>
+            {strings.submitErrorMessage}
+          </p>
+        </div>
+      )}
       <Field
         label={strings.nameLabel}
         id="name"

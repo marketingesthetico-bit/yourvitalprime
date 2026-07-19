@@ -34,6 +34,8 @@ export default function ContactPage({ params }: PageProps) {
         successBody:
           "Gracias por escribirnos. Leemos todos los mensajes y respondemos en un plazo de 3-5 días hábiles.",
         errorMessage: "Por favor revisa este campo.",
+        submitErrorMessage:
+          "No hemos podido enviar tu mensaje. Inténtalo de nuevo o escríbenos a hello@yourvitalprime.com.",
         consentLabel:
           "Acepto que mi mensaje se procese según la política de privacidad.",
         topics: [
@@ -54,6 +56,8 @@ export default function ContactPage({ params }: PageProps) {
         successBody:
           "Thanks for writing. We read every message and reply within 3-5 business days.",
         errorMessage: "Please check this field.",
+        submitErrorMessage:
+          "We couldn't send your message. Please try again or email us directly at hello@yourvitalprime.com.",
         consentLabel:
           "I agree to my message being processed according to the privacy policy.",
         topics: [
@@ -129,7 +133,7 @@ export default function ContactPage({ params }: PageProps) {
             </li>
           </ul>
         </aside>
-        <ContactForm strings={formStrings} />
+        <ContactForm strings={formStrings} lang={lang} />
       </div>
     </>
   );
