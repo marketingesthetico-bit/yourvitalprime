@@ -4,6 +4,12 @@ import { getDb, isFirebaseConfigured } from "@/lib/firebase";
 import { isGscConfigured } from "@/agents/gsc-indexer";
 
 const SITE_URL = process.env.GSC_SITE_URL || "https://yourvitalprime.com";
+// The Search Analytics API needs the exact GSC property identifier, which
+// for a Domain property (covers http/https + www/non-www under one roof)
+// is "sc-domain:example.com", not a real URL. Override with GSC_PROPERTY
+// if the property is ever switched to a URL-prefix type instead.
+const GSC_PROPERTY =
+  process.env.GSC_PROPERTY || `sc-domain:${new URL(SITE_URL).hostname}`;
 const LOW_CTR_THRESHOLD = 0.02;
 const LOW_CTR_MIN_IMPRESSIONS = 500;
 const EXPANSION_POSITION_MIN = 11;
@@ -49,7 +55,7 @@ export async function runSeoAudit(): Promise<SeoAuditReport> {
   const fmt = (d: Date) => d.toISOString().slice(0, 10);
 
   const response = await searchconsole.searchanalytics.query({
-    siteUrl: SITE_URL,
+    siteUrl: GSC_PROPERTY,
     requestBody: {
       startDate: fmt(startDate),
       endDate: fmt(endDate),
