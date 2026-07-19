@@ -1,4 +1,3 @@
 # YourVitalPrime — ads.txt
-# Replace ca-pub-XXXXXXXXXX with your Google AdSense publisher ID after approval.
 # Format: <domain>, <publisher ID>, <DIRECT|RESELLER>, <certification authority ID>
-google.com, pub-XXXXXXXXXXXXXXXX, DIRECT, f08c47fec0942fa0
+google.com, pub-9476743805443648, DIRECT, f08c47fec0942fa0
