@@ -5,7 +5,11 @@ type SiteImageProps = {
   /** Filename inside public/images (e.g. "hero-home.jpg") */
   name: string;
   alt: string;
-  /** CSS aspect ratio. Defaults to "16/9". Use "auto" to let intrinsic size win. */
+  /**
+   * CSS aspect ratio. Defaults to "16/9". Use "auto" for a full-bleed
+   * background that fills an already-sized `absolute inset-0` wrapper
+   * (pass `className="absolute inset-0 w-full h-full"` alongside it).
+   */
   aspect?: string;
   /** Object-fit override. Defaults to "cover". */
   fit?: "cover" | "contain";
@@ -99,7 +103,13 @@ export function SiteImage({
         objectFit: fit,
         objectPosition: position,
         width: "100%",
-        height: aspect === "auto" ? "auto" : "100%",
+        // "auto" is always used for full-bleed backgrounds inside an
+        // absolutely-positioned, already-sized wrapper (hero, newsletter) —
+        // height must be 100% so object-fit: cover crops to that box
+        // regardless of the source photo's own aspect ratio. For ratio-boxed
+        // usages (aspect="21/9" etc.) the parent is auto-height, so this
+        // 100% resolves to "auto" per spec and aspectRatio above governs.
+        height: "100%",
         display: "block",
       }}
     />

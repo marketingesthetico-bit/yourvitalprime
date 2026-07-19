@@ -43,7 +43,7 @@ export default async function HomePage({ params }: PageProps) {
     <>
       {/* ── Hero — full-bleed editorial cover ──────────────────── */}
       <section
-        className="relative w-full"
+        className="relative w-full overflow-hidden"
         style={{
           /* Sit under the sticky header without a hard seam */
           marginTop: "-1px",
