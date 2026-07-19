@@ -1,11 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { runSeoAudit } from "@/agents/seo-monitor";
 
 export const dynamic = "force-dynamic";
-
-/**
- * Phase 4 stub. Will pull GSC performance data daily, flag articles with
- * low CTR or borderline position, and write seo_reports docs to Firestore.
- */
+export const maxDuration = 60;
 
 function authorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -20,15 +17,14 @@ async function handle(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json(
-    {
-      status: "not_implemented",
-      phase: 4,
-      message:
-        "Post-publish SEO monitoring lands in Phase 4 with GSC Search Analytics API.",
-    },
-    { status: 501 }
-  );
+
+  try {
+    const report = await runSeoAudit();
+    return NextResponse.json({ success: true, ...report });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {

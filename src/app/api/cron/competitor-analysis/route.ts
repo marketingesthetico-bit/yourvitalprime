@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from "next/server";
+import { analyzeQueuedKeywords } from "@/agents/competitor-spy";
+import { isOpenAIConfigured } from "@/lib/openai";
+import { isFirebaseConfigured } from "@/lib/firebase";
 
 export const dynamic = "force-dynamic";
-
-/**
- * Phase 4 stub. Will pull SerpAPI / DataForSEO data for queued keywords and
- * write competitor_analysis docs to Firestore.
- */
+export const maxDuration = 120;
 
 function authorized(request: NextRequest): boolean {
   const secret = process.env.CRON_SECRET;
@@ -20,15 +19,30 @@ async function handle(request: NextRequest) {
   if (!authorized(request)) {
     return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
   }
-  return NextResponse.json(
-    {
-      status: "not_implemented",
-      phase: 4,
-      message:
-        "Competitor analysis lands in Phase 4 with SerpAPI/DataForSEO integration.",
-    },
-    { status: 501 }
-  );
+  if (!isOpenAIConfigured()) {
+    return NextResponse.json(
+      { success: false, error: "OPENAI_API_KEY not set." },
+      { status: 503 }
+    );
+  }
+  if (!isFirebaseConfigured()) {
+    return NextResponse.json(
+      { success: false, error: "Firebase not configured." },
+      { status: 503 }
+    );
+  }
+
+  const url = new URL(request.url);
+  const limitParam = url.searchParams.get("limit");
+  const limit = limitParam ? Math.min(20, Math.max(1, Number(limitParam))) : 10;
+
+  try {
+    const result = await analyzeQueuedKeywords(limit);
+    return NextResponse.json({ success: true, ...result });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return NextResponse.json({ success: false, error: message }, { status: 500 });
+  }
 }
 
 export async function POST(request: NextRequest) {
