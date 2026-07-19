@@ -43,6 +43,7 @@ type StringSet = {
     newsletterDisclaimer: string;
     newsletterSuccessTitle: string;
     newsletterSuccessBody: string;
+    newsletterErrorMessage: string;
     trustLine: string;
     emptyArticles: string;
   };
@@ -146,6 +147,8 @@ const en: StringSet = {
     newsletterDisclaimer: "We don't share your email. Promise — and we mean it.",
     newsletterSuccessTitle: "You're in.",
     newsletterSuccessBody: "First letter lands Thursday. See you then.",
+    newsletterErrorMessage:
+      "Something went wrong. Please try again in a moment.",
     trustLine:
       "An independent publication. Researched in Madrid, written for adults 50+. No medical advice — just what we'd want our parents to read.",
     emptyArticles:
@@ -270,6 +273,7 @@ const es: StringSet = {
     newsletterDisclaimer: "No compartimos tu email. En serio.",
     newsletterSuccessTitle: "Apuntado.",
     newsletterSuccessBody: "La primera carta sale este jueves. Nos vemos entonces.",
+    newsletterErrorMessage: "Algo ha fallado. Inténtalo de nuevo en un momento.",
     trustLine:
       "Una publicación independiente. Investigado en Madrid, escrito para adultos de 50+. Esto no es consejo médico — es lo que querríamos para nuestros padres.",
     emptyArticles:

@@ -5,12 +5,13 @@ import type { StringSet } from "@/lib/i18n/strings";
 
 type NewsletterFormProps = {
   strings: StringSet["home"];
+  lang: "en" | "es";
 };
 
-export function NewsletterForm({ strings }: NewsletterFormProps) {
+export function NewsletterForm({ strings, lang }: NewsletterFormProps) {
   const [email, setEmail] = useState("");
   const [status, setStatus] = useState<
-    "idle" | "submitting" | "success" | "error"
+    "idle" | "submitting" | "success" | "error" | "submit-error"
   >("idle");
 
   const onSubmit = async (e: React.FormEvent) => {
@@ -20,10 +21,18 @@ export function NewsletterForm({ strings }: NewsletterFormProps) {
       return;
     }
     setStatus("submitting");
-    // Wire to ConvertKit / Firestore in Phase 6. For now, soft-success.
-    await new Promise((r) => setTimeout(r, 600));
-    setStatus("success");
-    setEmail("");
+    try {
+      const res = await fetch("/api/newsletter", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ email, lang }),
+      });
+      if (!res.ok) throw new Error("submit failed");
+      setStatus("success");
+      setEmail("");
+    } catch {
+      setStatus("submit-error");
+    }
   };
 
   if (status === "success") {
@@ -64,9 +73,23 @@ export function NewsletterForm({ strings }: NewsletterFormProps) {
   return (
     <form
       onSubmit={onSubmit}
-      className="flex flex-col sm:flex-row gap-3 max-w-xl mx-auto"
+      className="flex flex-col gap-3 max-w-xl mx-auto"
       noValidate
     >
+      {status === "submit-error" && (
+        <p
+          role="alert"
+          style={{
+            color: "var(--color-secondary-900)",
+            fontFamily: "var(--font-ui)",
+            fontSize: "0.9375rem",
+            margin: 0,
+          }}
+        >
+          {strings.newsletterErrorMessage}
+        </p>
+      )}
+      <div className="flex flex-col sm:flex-row gap-3">
       <label htmlFor="newsletter-email" className="sr-only">
         Email
       </label>
@@ -101,6 +124,7 @@ export function NewsletterForm({ strings }: NewsletterFormProps) {
       >
         {status === "submitting" ? "…" : strings.newsletterSubmit}
       </button>
+      </div>
     </form>
   );
 }

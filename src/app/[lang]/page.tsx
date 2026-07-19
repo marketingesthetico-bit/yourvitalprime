@@ -451,7 +451,7 @@ export default async function HomePage({ params }: PageProps) {
             >
               {s.home.newsletterSubtitle}
             </p>
-            <NewsletterForm strings={s.home} />
+            <NewsletterForm strings={s.home} lang={lang} />
             <p
               className="mt-5 text-sm"
               style={{
